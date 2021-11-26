@@ -1,6 +1,7 @@
 import os
 import random
 import torch
+from torch import nn
 
 from training import networks
 
@@ -26,6 +27,17 @@ class GANModel(torch.nn.Module):
         # transform modules to convert generator output to sketches, etc.
         self.tf_real = networks.OutputTransform(opt, process=opt.transform_real, diffaug_policy=opt.diffaug_policy)
         self.tf_fake = networks.OutputTransform(opt, process=opt.transform_fake, diffaug_policy=opt.diffaug_policy)
+        
+        self.cut_G = networks.cut.ResnetGenerator(input_nc=3, output_nc=3, ngf=64, norm_layer=networks.cut.get_norm_layer(), use_dropout=False, n_blocks=9, padding_type='reflect', no_antialias=False, no_antialias_up=False, opt=None)
+        PATH = 'pretrained/cut_G.pth'
+        saved_state_dict = torch.load(PATH)
+        # self.cut_G.state_dict()
+        print(list(saved_state_dict.keys()))
+        print("model state dict")
+        print(list(self.cut_G.state_dict().keys()))
+        print("loading cut_G model ...")
+        print(self.cut_G.load_state_dict(saved_state_dict))
+        print("finished loading cut_G model.")
 
     # Entry point for all calls involving forward pass of deep networks.
     def forward(self, data, mode):
@@ -35,6 +47,11 @@ class GANModel(torch.nn.Module):
             g_loss, generated = self.compute_generator_loss()
             return g_loss, generated
         elif mode == 'discriminator':
+            # print("cut_G forward pass on real_sketch=({}, {})".format(type(real_sketch), real_sketch.shape))
+            
+            # real_sketch = self.cut_G(real_sketch) # DANGER
+            # print("done forward pass on cut_G, output=({}, {})".format(type(real_sketch), real_sketch.shape))
+            
             d_loss, interm_imgs = self.compute_discriminator_loss(real_sketch, real_image)
             return d_loss, interm_imgs
         elif mode == 'discriminator-regularize':
@@ -212,9 +229,20 @@ class GANModel(torch.nn.Module):
         # Transform G's output to sketches to apply sketch loss
         fake_transf = self.tf_fake(fake_image)
         real_transf = self.tf_real(real_sketch)
+    
+        # print("real_sketch, real_image, fake_transf, real_transf")
+        # print(real_sketch.shape, real_image.shape, fake_transf.shape, real_transf.shape)
+         
+        real_transf = self.cut_G(real_transf) # DANGER
+        
         pred_fake = self.netD_sketch(fake_transf)
         pred_real = self.netD_sketch(real_transf)
 
+        # print("real_sketch, real_image, pred_fake, pred_real")
+        # print(real_sketch.shape, real_image.shape, pred_fake.shape, pred_real.shape)
+        
+        
+        
         D_losses['D_fake_sketch'] = self.criterionGAN(pred_fake, False,
                                             for_discriminator=True)
         D_losses['D_real_sketch'] = self.criterionGAN(pred_real, True,
