@@ -28,16 +28,23 @@ class GANModel(torch.nn.Module):
         self.tf_real = networks.OutputTransform(opt, process=opt.transform_real, diffaug_policy=opt.diffaug_policy)
         self.tf_fake = networks.OutputTransform(opt, process=opt.transform_fake, diffaug_policy=opt.diffaug_policy)
         
-        self.cut_G = networks.cut.ResnetGenerator(input_nc=3, output_nc=3, ngf=64, norm_layer=networks.cut.get_norm_layer(), use_dropout=False, n_blocks=9, padding_type='reflect', no_antialias=False, no_antialias_up=False, opt=None)
-        PATH = 'pretrained/cut_G.pth'
-        saved_state_dict = torch.load(PATH)
-        # self.cut_G.state_dict()
-        print(list(saved_state_dict.keys()))
-        print("model state dict")
-        print(list(self.cut_G.state_dict().keys()))
-        print("loading cut_G model ...")
-        print(self.cut_G.load_state_dict(saved_state_dict))
-        print("finished loading cut_G model.")
+        self.cut_direction = opt.translation_direction
+        
+        if self.cut_direction in ['s2c', 'c2s']:
+            self.cut_G = networks.cut.ResnetGenerator(input_nc=3, output_nc=3, ngf=64, norm_layer=networks.cut.get_norm_layer(), use_dropout=False, n_blocks=9, padding_type='reflect', no_antialias=False, no_antialias_up=False, opt=None)
+            PATH = opt.cut_model_path
+
+            # PATH = 'pretrained/cut_G.pth'
+            saved_state_dict = torch.load(PATH)
+            # self.cut_G.state_dict()
+            print(list(saved_state_dict.keys()))
+            print("model state dict")
+            print(list(self.cut_G.state_dict().keys()))
+            print("loading cut_G model ...")
+            print(self.cut_G.load_state_dict(saved_state_dict))
+            print("finished loading cut_G model.")
+        else:
+            print("we will be using the baseline GAN Sketching")
 
     # Entry point for all calls involving forward pass of deep networks.
     def forward(self, data, mode):
@@ -232,8 +239,14 @@ class GANModel(torch.nn.Module):
     
         # print("real_sketch, real_image, fake_transf, real_transf")
         # print(real_sketch.shape, real_image.shape, fake_transf.shape, real_transf.shape)
-         
-        real_transf = self.cut_G(real_transf) # DANGER
+        # real_transf = self.cut_G(real_transf) # DANGER
+        
+        if self.cut_direction == 's2c':
+            real_transf = self.cut_G(real_transf) # DANGER
+        elif self.cut_direction == 'c2s':
+            fake_transf = self.cut_G(fake_transf) # DANGER
+        else:
+            pass # we will just use the baseline GAN Sketching model without translation
         
         pred_fake = self.netD_sketch(fake_transf)
         pred_real = self.netD_sketch(real_transf)
