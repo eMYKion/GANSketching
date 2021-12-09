@@ -103,14 +103,12 @@ def main():
     distances = []
     no_cnt = 0
     
-    '''
     real_imgs = os.listdir(real_dir)
     N = len(real_imgs)
     chunk_size = int(N / opt.batch)
     w_id = int(opt.name)
     for fname in tqdm(real_imgs[chunk_size * w_id:min(chunk_size * (w_id+1), N)]):
-    '''
-    for fname in tqdm(os.listdir(real_dir)):
+        
         if not(fname.endswith(".jpg") or fname.endswith(".png")):
             continue
             
