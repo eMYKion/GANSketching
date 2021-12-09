@@ -58,6 +58,9 @@ def get_opt():
     parser.add_argument("--transform_fake", type=str, default='toSketch,to3ch', help="sequence of operations to transform the fake images before D")
     parser.add_argument("--photosketch_path", type=str, default='./pretrained/photosketch.pth', help="path to the photosketch pre-trained model")
     parser.add_argument("--diffaug_policy", type=str, default='', help='sequence of operations used for differentiable augmentation')
+    
+    parser.add_argument("--translation_direction", type=str, default='c2s', help="the direction of translation (options: s2c, c2s, base)")
+    parser.add_argument("--cut_model_path", type=str, default='./pretrained/cut.pth', help='the path to the location of the cut model')
 
     opt = parser.parse_args()
     return opt, parser
